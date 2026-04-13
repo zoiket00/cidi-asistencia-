@@ -403,6 +403,7 @@ function switchTab(e) {
     .forEach((c) => c.classList.remove("active"));
   e.target.classList.add("active");
   document.getElementById(`content-${day}`).classList.add("active");
+  if (modifiedData[day]) renderTable(day, modifiedData[day]);
   updateCounter();
 }
 
@@ -794,12 +795,21 @@ function loadFromLocalStorage() {
 function renderAllSavedTabs() {
   daysTabs.innerHTML = "";
   tabsContent.innerHTML = "";
-  days.forEach((day, index) => {
+  let firstDay = null;
+  days.forEach((day) => {
     if (!modifiedData[day]) return;
-    renderTabHeader(day, index === 0);
-    renderTabContainer(day, index === 0);
+    if (!firstDay) firstDay = day;
+    renderTabHeader(day, false);
+    renderTabContainer(day, false);
     renderTable(day, modifiedData[day]);
   });
+  // Activar el primer tab disponible para que el DOM tenga uno activo
+  if (firstDay) {
+    const firstTab = document.querySelector(`.tab[data-day="${firstDay}"]`);
+    const firstContent = document.getElementById(`content-${firstDay}`);
+    if (firstTab) firstTab.classList.add("active");
+    if (firstContent) firstContent.classList.add("active");
+  }
 }
 
 // ─── Exportación a Excel ──────────────────────────────────────────────────────
@@ -988,7 +998,9 @@ function updateCounter() {
   const total = data.length;
   const presentRows = data.filter((r) => r.Asistencia === "Sí");
   const present = presentRows.length;
-  const absent = data.filter((r) => r.Asistencia === "No").length;
+  const absent = data.filter(
+    (r) => r.Asistencia === "No" || r.Asistencia === "" || !r.Asistencia,
+  ).length;
   const reported = data.filter((r) => r.Reporte === "Sí").length;
   const extras = data.filter((r) => r.Visitante === "Sí").length;
   const noCidi = data.filter((r) => r.NoCidi === "Sí").length;
