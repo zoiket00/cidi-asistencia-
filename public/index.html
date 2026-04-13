@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Asistencia - Fundación Juanfe</title>
-    <link rel="icon" type="image/png" href="img/Logo-Juanfe-verde-1-1.png">
+    <link rel="icon" type="image/png" href="img/Logo-Juanfe-verde-1-1.png" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -30,6 +30,11 @@
             <div class="counter-item counter-present">
               <span class="counter-label">Asistencia</span>
               <span class="counter-value" id="count-present">0</span>
+              <span
+                class="counter-ages"
+                id="count-present-ages"
+                style="display: none"
+              ></span>
             </div>
             <div class="counter-item counter-absent">
               <span class="counter-label">Inasistencia</span>
@@ -66,7 +71,7 @@
         <button
           id="dashboard-btn"
           class="btn btn-dashboard"
-          onclick="window.open('/dashboard', '_blank')"
+          onclick="abrirGraficas()"
         >
           📊 Ver Gráficas
         </button>
@@ -134,7 +139,7 @@
 
           <div class="form-row">
             <div class="form-group">
-              <label for="motherInstitucion">Institución</label>
+              <label for="motherInstitucion">Fase</label>
               <select id="motherInstitucion" name="institucion">
                 <option value="" disabled selected>Seleccionar</option>
                 <option value="UTE">UTE</option>

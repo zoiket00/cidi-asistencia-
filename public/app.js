@@ -50,7 +50,7 @@ const columnOrder = [
 const columnHeaders = {
   NombreBebe: "Nombre Bebé",
   NombreMadre: "Nombre Madre",
-  InstitucionMadre: "Institución",
+  InstitucionMadre: "Fase",
   ProgramaMadre: "Programa",
   Edad: "Edad (meses)",
   Asistencia: "Asistencia",
@@ -279,7 +279,10 @@ async function loadMasterDataFromServer() {
     });
     saveToLocalStorage();
     exportBtn.disabled = false;
-    updateSyncStatus("ok", `BD conectada — ${masterData.length} bebés cargados`);
+    updateSyncStatus(
+      "ok",
+      `BD conectada — ${masterData.length} bebés cargados`,
+    );
     console.log(`✅ Base de datos cargada — ${masterData.length} bebés únicos`);
   } catch (err) {
     updateSyncStatus("error", "Sin conexión a la BD — usando datos guardados");
@@ -444,7 +447,7 @@ function renderTable(day, data, searchTerm = "") {
   table.innerHTML = `
     <thead>
       <tr>
-        <th>Nombre Bebé</th><th>Nombre Madre</th><th>Institución</th>
+        <th>Nombre Bebé</th><th>Nombre Madre</th><th>Fase</th>
         <th>Programa</th><th>Edad (meses)</th><th>Asistencia</th>
       </tr>
     </thead>
@@ -477,43 +480,63 @@ function renderRow(tr, row, day, index) {
   // Nombre bebé y madre (solo texto)
   tr.innerHTML = `<td>${row.NombreBebe}</td><td>${row.NombreMadre}</td>`;
 
-  // Institución
-  tr.appendChild(
-    wrapInTd(
-      createSelect(
-        Instituciones,
-        row.InstitucionMadre,
-        (val) => updateField(day, index, "InstitucionMadre", val),
-        "Seleccionar",
-      ),
-    ),
+  // --- Lógica de Fase e Institución ---
+  // Guardamos la referencia del selector de Programa para poder manipularlo desde el de Fase
+  const selectPrograma = createSelect(
+    Programas,
+    row.ProgramaMadre,
+    (val) => updateField(day, index, "ProgramaMadre", val),
+    "Seleccionar",
   );
 
-  // Programa
-  tr.appendChild(
-    wrapInTd(
-      createSelect(
-        Programas,
-        row.ProgramaMadre,
-        (val) => updateField(day, index, "ProgramaMadre", val),
-        "Seleccionar",
-      ),
-    ),
+  const selectFase = createSelect(
+    Instituciones,
+    row.InstitucionMadre,
+    (val) => {
+      updateField(day, index, "InstitucionMadre", val);
+      // Si la fase es TSF, limpiamos el programa y lo deshabilitamos
+      if (val === "TSF") {
+        updateField(day, index, "ProgramaMadre", "");
+        selectPrograma.value = "";
+        selectPrograma.disabled = true;
+      } else {
+        selectPrograma.disabled = false;
+      }
+    },
+    "Seleccionar",
   );
 
-  // Edad
-  tr.appendChild(
-    wrapInTd(
-      createSelect(
-        ["6-15", "16-30"],
-        row.Edad,
-        (val) => updateField(day, index, "Edad", val),
-        "Seleccionar",
-      ),
-    ),
-  );
+  // Verificación inicial al cargar la fila: si ya es TSF, el programa debe nacer deshabilitado
+  if (row.InstitucionMadre === "TSF") {
+    selectPrograma.disabled = true;
+  }
 
-  // ── Botones Sí / No + acordeón de reporte en la misma celda ──
+  // Añadimos los selectores a la tabla
+  tr.appendChild(wrapInTd(selectFase));
+  tr.appendChild(wrapInTd(selectPrograma));
+
+  // Edad — chip toggle
+  const edadChip = document.createElement("button");
+  edadChip.type = "button";
+  const edadClass = row.Edad
+    ? " has-edad edad-" + row.Edad.replace("-", "_")
+    : "";
+  edadChip.className = "btn-edad-chip" + edadClass;
+  edadChip.textContent = row.Edad || "—";
+  edadChip.title = "Click para cambiar edad";
+  edadChip.addEventListener("click", () => {
+    const opciones = ["6-15", "16-30"];
+    const idx = opciones.indexOf(row.Edad);
+    const next = opciones[(idx + 1) % opciones.length];
+    updateField(day, index, "Edad", next);
+    edadChip.textContent = next;
+    edadChip.classList.add("has-edad");
+    edadChip.dataset.edad = next;
+    edadChip.className =
+      "btn-edad-chip has-edad edad-" + next.replace("-", "_");
+  });
+  tr.appendChild(wrapInTd(edadChip));
+
   // ── Celda de asistencia: botones Sí/No + botón Ver ──
   const tdAsis = document.createElement("td");
   tdAsis.className = "td-asistencia";
@@ -531,16 +554,14 @@ function renderRow(tr, row, day, index) {
   btnNo.type = "button";
   btnNo.textContent = "No";
   btnNo.className =
-    "btn-asis btn-no" + (row.Asistencia !== "Sí" ? " active" : "");
+    "btn-asis btn-no" + (row.Asistencia === "No" ? " active" : "");
 
-  // Botón "Ver" que aparece solo después de guardar reporte
   const btnVer = document.createElement("button");
   btnVer.type = "button";
   btnVer.className =
     "btn-ver-reporte" + (row.Reporte === "Sí" ? "" : " acc-hidden");
   btnVer.textContent = "Ver";
 
-  // Botón Editar al lado de Ver
   const btnEditar = document.createElement("button");
   btnEditar.type = "button";
   btnEditar.className =
@@ -562,9 +583,7 @@ function renderRow(tr, row, day, index) {
   accordionTd.colSpan = 6;
   accordionTd.className = "accordion-td";
 
-  // Formulario de reporte
   const yaReportado = row.Reporte === "Sí";
-
   const formDiv = document.createElement("div");
   formDiv.className = "reporte-form" + (yaReportado ? " acc-hidden" : "");
 
@@ -619,7 +638,6 @@ function renderRow(tr, row, day, index) {
   btnGuardar.onclick = () => {
     saveToLocalStorage();
     const r = modifiedData[day][index];
-    // Ocultar form, mostrar resumen, mostrar botón Ver
     formDiv.classList.add("acc-hidden");
     summaryDiv.classList.remove("acc-hidden");
     btnVer.classList.remove("acc-hidden");
@@ -635,7 +653,6 @@ function renderRow(tr, row, day, index) {
   formDiv.appendChild(grpNota);
   formDiv.appendChild(btnGuardar);
 
-  // Resumen del reporte guardado
   const summaryDiv = document.createElement("div");
   summaryDiv.className = "reporte-summary" + (yaReportado ? "" : " acc-hidden");
 
@@ -646,37 +663,50 @@ function renderRow(tr, row, day, index) {
     : "";
 
   summaryDiv.appendChild(summaryText);
-
   accordionTd.appendChild(formDiv);
   accordionTd.appendChild(summaryDiv);
   accordionTr.appendChild(accordionTd);
 
-  // ── Lógica botones Sí/No ──
   const getRowClass = () => {
     if (row.NoCidi === "Sí") return "nocidi-row";
     if (row.Visitante === "Sí") return "visitor-row";
     return "";
   };
 
-  btnSi.onclick = () => {
-    updateField(day, index, "Asistencia", "Sí");
-    btnSi.classList.add("active");
-    btnNo.classList.remove("active");
-    tr.className = getRowClass() || "present-row";
-    accordionTr.classList.add("acc-hidden");
+  btnSi.addEventListener("click", () => {
+    if (row.Asistencia === "Sí") {
+      updateField(day, index, "Asistencia", "");
+      btnSi.classList.remove("active");
+      btnNo.classList.remove("active");
+      tr.className = getRowClass() || "neutral-row";
+      accordionTr.classList.add("acc-hidden");
+    } else {
+      updateField(day, index, "Asistencia", "Sí");
+      btnSi.classList.add("active");
+      btnNo.classList.remove("active");
+      tr.className = getRowClass() || "present-row";
+      accordionTr.classList.add("acc-hidden");
+    }
     updateCounter();
-  };
+  });
 
-  btnNo.onclick = () => {
-    updateField(day, index, "Asistencia", "No");
-    btnNo.classList.add("active");
-    btnSi.classList.remove("active");
-    tr.className = getRowClass() || "absent-row";
-    accordionTr.classList.remove("acc-hidden");
+  btnNo.addEventListener("click", () => {
+    if (row.Asistencia === "No") {
+      updateField(day, index, "Asistencia", "");
+      btnNo.classList.remove("active");
+      btnSi.classList.remove("active");
+      tr.className = getRowClass() || "neutral-row";
+      accordionTr.classList.add("acc-hidden");
+    } else {
+      updateField(day, index, "Asistencia", "No");
+      btnNo.classList.add("active");
+      btnSi.classList.remove("active");
+      tr.className = getRowClass() || "absent-row";
+      accordionTr.classList.remove("acc-hidden");
+    }
     updateCounter();
-  };
+  });
 
-  // Botón Ver — muestra resumen
   btnVer.onclick = () => {
     accordionTr.classList.toggle("acc-hidden");
     if (!accordionTr.classList.contains("acc-hidden")) {
@@ -685,14 +715,12 @@ function renderRow(tr, row, day, index) {
     }
   };
 
-  // Botón Editar — abre form
   btnEditar.onclick = () => {
     accordionTr.classList.remove("acc-hidden");
     formDiv.classList.remove("acc-hidden");
     summaryDiv.classList.add("acc-hidden");
   };
 
-  // Insertar accordionTr después del tr principal (lo hace el caller)
   tr._accordionTr = accordionTr;
 }
 
@@ -783,7 +811,7 @@ function exportToExcel() {
   }
 
   const dayToExport = activeTab.dataset.day;
-  const sheetName   = dayToExport === "Miércoles" ? "Miercoles" : dayToExport;
+  const sheetName = dayToExport === "Miércoles" ? "Miercoles" : dayToExport;
   const dataToExport = modifiedData[dayToExport] || [];
 
   if (dataToExport.length === 0) {
@@ -791,7 +819,7 @@ function exportToExcel() {
     return;
   }
 
-  const today    = new Date();
+  const today = new Date();
   const fechaISO = today.toISOString().split("T")[0];
 
   // ── 1. Preparar datos para el Excel (mismo formato de siempre) ────────────
@@ -806,7 +834,11 @@ function exportToExcel() {
 
   // ── 2. Generar y descargar el Excel (igual que antes) ─────────────────────
   const newWb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(newWb, XLSX.utils.json_to_sheet(dataOrdered), sheetName);
+  XLSX.utils.book_append_sheet(
+    newWb,
+    XLSX.utils.json_to_sheet(dataOrdered),
+    sheetName,
+  );
   const nombreArchivo = `asistencia-${dayToExport}-${formatDate(new Date())}.xlsx`;
   XLSX.writeFile(newWb, nombreArchivo);
 
@@ -818,45 +850,53 @@ function exportToExcel() {
     body: JSON.stringify({ nombre: nombreArchivo, datos: wbOut }),
   })
     .then((r) => r.json())
-    .then((r) => { if (r.ok) console.log("✅ Respaldo en disco:", r.archivo); })
-    .catch((e) => console.warn("⚠️ No se pudo guardar respaldo en disco:", e.message));
+    .then((r) => {
+      if (r.ok) console.log("✅ Respaldo en disco:", r.archivo);
+    })
+    .catch((e) =>
+      console.warn("⚠️ No se pudo guardar respaldo en disco:", e.message),
+    );
 
   // ── 4. NUEVO: Guardar asistencia en Supabase ──────────────────────────────
   // Capturamos los datos ANTES de limpiarlos (limpiar ocurre más abajo)
   // Le mandamos al servidor exactamente lo que tiene la profesora en pantalla.
   const registrosParaSupabase = dataToExport.map((row) => ({
-    NombreBebe:          row.NombreBebe          || "",
-    NombreMadre:         row.NombreMadre         || "",
-    InstitucionMadre:    row.InstitucionMadre     || "",
-    ProgramaMadre:       row.ProgramaMadre        || "",
-    Edad:                row.Edad                 || "",
-    Asistencia:          row.Asistencia           || "No",
-    Ubicacion:           row.Ubicacion            || "",
-    Reporte:             row.Reporte              || "No",
-    SituacionEspecifica: row.SituacionEspecifica  || "",
-    Nota:                row.Nota                 || "",
-    Visitante:           row.Visitante            || "",
-    NoCidi:              row.NoCidi               || "",
+    NombreBebe: row.NombreBebe || "",
+    NombreMadre: row.NombreMadre || "",
+    InstitucionMadre: row.InstitucionMadre || "",
+    ProgramaMadre: row.ProgramaMadre || "",
+    Edad: row.Edad || "",
+    Asistencia: row.Asistencia || "No",
+    Ubicacion: row.Ubicacion || "",
+    Reporte: row.Reporte || "No",
+    SituacionEspecifica: row.SituacionEspecifica || "",
+    Nota: row.Nota || "",
+    Visitante: row.Visitante || "",
+    NoCidi: row.NoCidi || "",
   }));
 
   fetch("/api/asistencia/guardar", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      fecha:     fechaISO,
-      dia:       dayToExport,
+      fecha: fechaISO,
+      dia: dayToExport,
       registros: registrosParaSupabase,
     }),
   })
     .then((r) => r.json())
     .then((r) => {
       if (r.ok) {
-        console.log(`✅ Asistencia guardada en Supabase: ${r.guardados} registros — ${dayToExport} ${fechaISO}`);
+        console.log(
+          `✅ Asistencia guardada en Supabase: ${r.guardados} registros — ${dayToExport} ${fechaISO}`,
+        );
       } else {
         console.warn("⚠️ Supabase respondió con error:", r.error);
       }
     })
-    .catch((e) => console.warn("⚠️ No se pudo guardar en Supabase:", e.message));
+    .catch((e) =>
+      console.warn("⚠️ No se pudo guardar en Supabase:", e.message),
+    );
 
   console.log(`✅ Excel exportado: ${dayToExport} ${fechaISO}`);
 
@@ -865,12 +905,12 @@ function exportToExcel() {
     (row) => row.Visitante !== "Sí" && row.NoCidi !== "Sí",
   );
   modifiedData[dayToExport].forEach((row) => {
-    row.Asistencia          = "";
-    row.Edad                = "";
-    row.Ubicacion           = "";
-    row.Reporte             = "No";
+    row.Asistencia = "";
+    row.Edad = "";
+    row.Ubicacion = "";
+    row.Reporte = "No";
     row.SituacionEspecifica = "";
-    row.Nota                = "";
+    row.Nota = "";
   });
 
   saveToLocalStorage();
@@ -931,6 +971,13 @@ function filterData() {
   if (modifiedData[day]) renderTable(day, modifiedData[day], term);
 }
 
+function edadRangoLabel(rows) {
+  const c615 = rows.filter((r) => r.Edad === "6-15").length;
+  const c1630 = rows.filter((r) => r.Edad === "16-30").length;
+  if (c615 === 0 && c1630 === 0) return "";
+  return `6-15: ${c615}   |   16-30: ${c1630}`;
+}
+
 function updateCounter() {
   const activeTab = document.querySelector(".tab.active");
   const counterBar = document.getElementById("counter-bar");
@@ -939,8 +986,9 @@ function updateCounter() {
   const day = activeTab.dataset.day;
   const data = modifiedData[day] || [];
   const total = data.length;
-  const present = data.filter((r) => r.Asistencia === "Sí").length;
-  const absent = total - present;
+  const presentRows = data.filter((r) => r.Asistencia === "Sí");
+  const present = presentRows.length;
+  const absent = data.filter((r) => r.Asistencia === "No").length;
   const reported = data.filter((r) => r.Reporte === "Sí").length;
   const extras = data.filter((r) => r.Visitante === "Sí").length;
   const noCidi = data.filter((r) => r.NoCidi === "Sí").length;
@@ -951,6 +999,14 @@ function updateCounter() {
   document.getElementById("count-reported").textContent = reported;
   document.getElementById("count-extras").textContent = extras;
   document.getElementById("count-nocidi").textContent = noCidi;
+
+  const ageEl = document.getElementById("count-present-ages");
+  if (ageEl) {
+    const label = edadRangoLabel(presentRows);
+    ageEl.textContent = label;
+    ageEl.style.display = label ? "block" : "none";
+  }
+
   counterBar.style.display = total > 0 ? "flex" : "none";
 }
 
@@ -974,6 +1030,16 @@ function addAddBabyButton() {
   const visitanteCheck = document.getElementById("esVisitante");
   const noCidiCheck = document.getElementById("esNoCidi");
 
+  // --- LÓGICA DE FASE (TSF) ---
+  instSelect.addEventListener("change", () => {
+    if (instSelect.value === "TSF") {
+      progSelect.value = ""; // Limpia la selección
+      progSelect.disabled = true; // Deshabilita
+    } else {
+      progSelect.disabled = false; // Habilita para los demás
+    }
+  });
+
   // Bloqueo mutuo: si uno se marca, el otro se deshabilita
   visitanteCheck.addEventListener("change", () => {
     noCidiCheck.disabled = visitanteCheck.checked;
@@ -991,6 +1057,7 @@ function addAddBabyButton() {
     searchResults.style.display = "none";
     visitanteCheck.disabled = false;
     noCidiCheck.disabled = false;
+    progSelect.disabled = false; // Resetear el estado del select
   }
 
   function fillForm(baby) {
@@ -998,7 +1065,16 @@ function addAddBabyButton() {
     babyNameInput.value = baby.NombreBebe;
     motherNameInput.value = baby.NombreMadre;
     instSelect.value = baby.InstitucionMadre || "";
-    progSelect.value = baby.ProgramaMadre || "";
+
+    // IMPORTANTE: Chequear si el bebé cargado es TSF para bloquear el programa de una vez
+    if (baby.InstitucionMadre === "TSF") {
+      progSelect.value = "";
+      progSelect.disabled = true;
+    } else {
+      progSelect.value = baby.ProgramaMadre || "";
+      progSelect.disabled = false;
+    }
+
     edadSelect.value = baby.Edad || "";
   }
 
@@ -1008,9 +1084,11 @@ function addAddBabyButton() {
     modal.style.display = "block";
     searchBabyInput.focus();
   });
+
   closeBtn.addEventListener("click", () => {
     modal.style.display = "none";
   });
+
   window.addEventListener("click", (e) => {
     if (e.target === modal) modal.style.display = "none";
   });
@@ -1061,7 +1139,6 @@ function addAddBabyButton() {
     const nombreNuevo = babyNameInput.value.trim();
     const nombreNormalizado = normalizeText(nombreNuevo);
 
-    // --- VALIDACIÓN ANTI-DUPLICADOS ---
     if (modifiedData[currentDay]) {
       const yaExiste = modifiedData[currentDay].some(
         (b) => normalizeText(b.NombreBebe) === nombreNormalizado,
@@ -1079,7 +1156,8 @@ function addAddBabyButton() {
       NombreBebe: babyNameInput.value.trim(),
       NombreMadre: motherNameInput.value.trim(),
       InstitucionMadre: instSelect.value,
-      ProgramaMadre: progSelect.value,
+      // Si está deshabilitado, mandamos vacío para asegurar limpieza de datos
+      ProgramaMadre: progSelect.disabled ? "" : progSelect.value,
       Edad: edadSelect.value,
       Asistencia: "Sí",
       Ubicacion: "",
@@ -1097,7 +1175,6 @@ function addAddBabyButton() {
 
     if (!modifiedData[currentDay]) modifiedData[currentDay] = [];
 
-    // Extras y NoCidi van al inicio de la lista
     if (newBaby.Visitante === "Sí" || newBaby.NoCidi === "Sí") {
       modifiedData[currentDay].unshift(newBaby);
     } else {
@@ -1110,11 +1187,10 @@ function addAddBabyButton() {
 
     resetModal();
     modal.style.display = "none";
-    exportBtn.disabled = false;
+    if (typeof exportBtn !== "undefined") exportBtn.disabled = false;
 
-    // Mensaje de éxito opcional (puedes usar también showSmartAlert si quieres)
     console.log(`Bebé "${nombreNuevo}" añadido correctamente.`);
-    if (searchInput.value) filterData();
+    if (typeof searchInput !== "undefined" && searchInput.value) filterData();
   });
 }
 
@@ -1137,4 +1213,9 @@ function showSmartAlert(message) {
       modal.style.display = "none";
     }
   };
+}
+
+function abrirGraficas() {
+  // Esto cambia la URL actual por la del dashboard
+  window.location.replace("/dashboard");
 }
