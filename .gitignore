@@ -1,4 +1,23 @@
-node_modules/ 
-.env 
-historico/ 
-*.xlsx
+# Entorno
+.env
+.env.local
+.env.*.local
+
+# Dependencias
+node_modules/
+
+# Respaldo local de Excels (no subir al repo)
+historico/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/
+*.swp
