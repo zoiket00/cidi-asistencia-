@@ -20,8 +20,18 @@
     </header>
 
     <main class="container">
+
+      <!-- ── Barra superior: contadores + indicador Supabase ── -->
       <section class="file-upload">
         <div class="file-upload-row">
+
+          <!-- Indicador de conexión a Supabase -->
+          <div class="sync-status">
+            <span class="sync-dot sync-loading" id="syncDot"></span>
+            <span class="sync-text" id="syncText">Conectando con base de datos...</span>
+          </div>
+
+          <!-- Contadores -->
           <div class="counter-bar" id="counter-bar" style="display: none">
             <div class="counter-item counter-total">
               <span class="counter-label">Total</span>
@@ -53,10 +63,11 @@
               <span class="counter-value" id="count-nocidi">0</span>
             </div>
           </div>
+
         </div>
       </section>
-      <input type="file" id="file-input" accept=".xlsx" style="display: none" />
 
+      <!-- ── Controles: búsqueda, pestañas, botones ── -->
       <section class="controls-row">
         <input
           type="text"
@@ -86,6 +97,7 @@
       </footer>
     </main>
 
+    <!-- ── Modal: Agregar bebé ── -->
     <div
       id="addBabyModal"
       class="modal"
@@ -145,7 +157,7 @@
                 <option value="UTE">UTE</option>
                 <option value="ULA 1">ULA 1</option>
                 <option value="ULA 2">ULA 2</option>
-                <option value="Tsf">Tsf</option>
+                <option value="TSF">TSF</option>
                 <option value="Otra">Otra</option>
               </select>
             </div>
@@ -192,6 +204,7 @@
       </div>
     </div>
 
+    <!-- ── Modal: Alerta duplicado ── -->
     <div id="smartAlertModal" class="modal" style="display: none">
       <div class="modal-content smart-alert">
         <div class="alert-header">
@@ -207,6 +220,7 @@
       </div>
     </div>
 
+    <!-- XLSX solo para exportación — la carga de datos viene de Supabase -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="app.js"></script>
   </body>
