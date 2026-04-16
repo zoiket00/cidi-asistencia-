@@ -50,6 +50,7 @@ const COL_MAP = {
   "nombre bebe": "NombreBebe", "nombre bebé": "NombreBebe", nombrebebe: "NombreBebe",
   "nombre madre": "NombreMadre", nombremadre: "NombreMadre",
   "institucion": "Institucion", "institución": "Institucion",
+  "fase": "Institucion", "fase madre": "Institucion", "fasemadre": "Institucion",
   "programa": "Programa",
   "edad (meses)": "Edad", edad: "Edad",
   fecha: "Fecha", dia: "Dia", "día": "Dia",
@@ -129,7 +130,7 @@ async function run() {
           filas.push({
             nombre_bebe:          r.NombreBebe.trim(),
             nombre_madre:         (r.NombreMadre || "").trim(),
-            institucion:          (r.Institucion || "").trim(),
+            "Fase":                 (r.Institucion || "").trim(),
             programa:             (r.Programa || "").trim(),
             edad:                 (r.Edad || "").trim(),
             fecha,

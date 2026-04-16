@@ -202,7 +202,7 @@ app.post("/api/asistencia/guardar", async (req, res) => {
       .map((r) => ({
         nombre_bebe:          (r.NombreBebe         || "").trim(),
         nombre_madre:         (r.NombreMadre        || "").trim(),
-        institucion:          (r.InstitucionMadre   || "").trim(),
+        "Fase":                 (r.InstitucionMadre   || "").trim(),
         programa:             (r.ProgramaMadre      || "").trim(),
         edad:                 (r.Edad               || "").trim(),
         fecha,
@@ -270,7 +270,7 @@ app.get("/api/asistencia", async (req, res) => {
     const registros = data.map((r) => ({
       NombreBebe:          r.nombre_bebe,
       NombreMadre:         r.nombre_madre,
-      InstitucionMadre:    r.institucion,
+      InstitucionMadre:    r["Fase"],
       ProgramaMadre:       r.programa,
       Edad:                r.edad,
       Fecha:               r.fecha,

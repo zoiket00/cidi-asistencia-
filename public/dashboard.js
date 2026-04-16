@@ -56,11 +56,15 @@ const UnifiedModel = (() => {
     nombremadre: "NombreMadre",
     "nombre madre": "NombreMadre",
     madre: "NombreMadre",
-    // Institución
+
+    // Institución / Fase — acepta TODAS las variantes de Excel y Supabase
     institucionmadre: "InstitucionMadre",
     institucion: "InstitucionMadre",
     institución: "InstitucionMadre",
     "institucion madre": "InstitucionMadre",
+    fase: "InstitucionMadre",
+    "fase madre": "InstitucionMadre",
+    fasemadre: "InstitucionMadre",
     // Programa
     programamadre: "ProgramaMadre",
     programa: "ProgramaMadre",
@@ -1304,7 +1308,7 @@ function updateKPIs(resumen, todosLosRegistros) {
     document.getElementById("kpiReportesMulti").textContent = totalReportes;
 
     // ── Tabla resumen por día con semáforo ───────────────────────────────
-    const DIAS_ORD = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+   const DIAS_ORD = ["Lunes","Martes","Miercoles","Jueves","Viernes"];
     dias.sort((a, b) => {
       const ai = DIAS_ORD.indexOf(a.label);
       const bi = DIAS_ORD.indexOf(b.label);
@@ -1477,7 +1481,7 @@ function buildDashboardForFilter(filter) {
         buildChartBarFilter(
           presentes,
           "institución",
-          "🏛 Presentes por institución",
+          "🏛 Presentes por fase",
           "#22c55e",
         );
       if (hasProg)
@@ -1525,7 +1529,7 @@ function buildDashboardForFilter(filter) {
         buildChartBarFilter(
           ausentes,
           "institución",
-          "🏛 Ausentes por institución",
+          "🏛 Ausentes por fase",
           "#ef4444",
         );
       if (hasProg)
@@ -1575,7 +1579,7 @@ function buildDashboardForFilter(filter) {
         buildChartBarFilter(
           reportados,
           "institución",
-          "🏛 Reportes por institución",
+          "🏛 Reportes por fase",
           "#f97316",
         );
       if (hasProg)
@@ -1609,7 +1613,7 @@ function buildDashboardForFilter(filter) {
         buildChartBarFilter(
           extras,
           "institución",
-          "🏛 Extras por institución",
+          "🏛 Extras por fase",
           "#3b82f6",
         );
       if (hasProg)
@@ -1642,7 +1646,7 @@ function buildDashboardForFilter(filter) {
         buildChartBarFilter(
           nocidi,
           "institución",
-          "🏛 No CIDI por institución",
+          "🏛 No CIDI por fase",
           "#8b5cf6",
         );
       if (hasProg)
@@ -2011,9 +2015,9 @@ function buildChartInstitucion(data) {
   const totalInst = labels.reduce((s, l) => s + counts[l].presentes + counts[l].ausentes, 0);
   const card = createCard(
     "chart-institucion",
-    "🏛 Por:institución",
+    "🏛 Por fase",
     "col-6",
-    `${labels.length} instituciones · ${totalInst} registros`,
+    `${labels.length} fases · ${totalInst} registros`,
     h,
   );
   dashGrid.appendChild(card);
@@ -3568,7 +3572,7 @@ function buildTabla(data) {
   const COLS = [
     { key: "bebe", label: "NOMBRE BEBÉ" },
     { key: "madre", label: "NOMBRE MADRE" },
-    { key: "institucion", label: "INSTITUCIÓN" },
+    { key: "institucion", label: "FASE" },
     { key: "programa", label: "PROGRAMA" },
     { key: "edad", label: "EDAD" },
     { key: "asistencia", label: "ASISTENCIA" },
@@ -3862,7 +3866,7 @@ function exportarTablaConsolidada() {
     },
     {
       key: "institucion",
-      label: "INSTITUCIÓN",
+      label: "FASE",
       get: (r) => limpiarMayus(r.InstitucionMadre),
     },
     {
